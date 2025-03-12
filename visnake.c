@@ -32,79 +32,103 @@ typedef struct point_list point_list;
 
 typedef struct {
   enum { DIR_UP, DIR_DOWN, DIR_LEFT, DIR_RIGHT } direction;
-  point_list *head;
-  point_list *tail;
+  point_list *head; // cyclical list
 } Snake;
+
+void add_head(Snake *s, point p) {
+  if (!s) return;
+
+  point_list *new = malloc(sizeof(point_list));
+  if (!new) return;
+  new->point = p;
+
+  if (!s->head) {
+    s->head = new;
+    new->next = NULL;
+    new->prev = NULL;
+    return;
+  }
+
+  if (!s->head->prev) {
+    new->next = s->head;
+    new->prev = s->head;
+    s->head->prev = new;
+    s->head->next = new;
+    s->head = new;
+    return;
+  }
+
+  new->next = s->head;
+  new->prev = s->head->prev;
+
+  s->head->prev->next = new;
+  s->head->prev = new;
+  s->head = new;
+}
 
 void init_game(Snake *s) {
   if (!s) return;
 
-  s->head = malloc(sizeof(point_list));
-  if (!s->head) return;
-  s->head->next = malloc(sizeof(point_list));
-  if (!s->head->next) return;
-  s->head->next->next = malloc(sizeof(point_list));
-  if (!s->head->next->next) return;
-
-  s->head->next->next->next = NULL;
-  s->head->prev = NULL;
-  s->head->next->prev = s->head;
-  s->head->next->next->prev = s->head->next;
-
-  s->head->point.x = 3 + rand() % (SIZE_X-6);
-  s->head->point.y = 3 + rand() % (SIZE_Y-6);
+  point head = {
+    .x = 3 + rand() % (SIZE_X-6),
+    .y = 3 + rand() % (SIZE_Y-6),
+  };
 
   bool horizontal = rand() % 2;
+  int side;
   if (horizontal) {
-    s->head->next->point.y = s->head->point.y;
-    s->head->next->next->point.y = s->head->point.y;
+    if (head.x > SIZE_X - head.x) {
+      side = 1;
+      s->direction = DIR_LEFT;
+    } else {
+      side = -1;
+      s->direction = DIR_RIGHT;
+    }
 
-    int side = (s->head->point.x > SIZE_X - s->head->point.x)
-               ? 1
-               : -1;
+    add_head(s, (point) {
+      .x = head.x + side * 2,
+      .y = head.y
+    });
 
-    s->head->next->point.x = s->head->point.x + side;
-    s->head->next->next->point.x = s->head->next->point.x + side;
-
-    if (side == 1) s->direction = DIR_LEFT;
-    else s->direction = DIR_RIGHT;
+    add_head(s, (point) {
+      .x = head.x + side,
+      .y = head.y
+    });
   } else {
-    s->head->next->point.x = s->head->point.x;
-    s->head->next->next->point.x = s->head->point.x;
+    if (head.y > SIZE_Y - head.y) {
+      side = 1;
+      s->direction = DIR_UP;
+    } else {
+      side = -1;
+      s->direction = DIR_DOWN;
+    }
 
-    int side = (s->head->point.y > SIZE_Y - s->head->point.y)
-               ? 1
-               : -1;
+    add_head(s, (point) {
+      .x = head.x,
+      .y = head.y + side * 2
+    });
 
-    s->head->next->point.y = s->head->point.y + side;
-    s->head->next->next->point.y = s->head->next->point.y + side;
-
-    if (side == 1) s->direction = DIR_UP;
-    else s->direction = DIR_DOWN;
+    add_head(s, (point) {
+      .x = head.x,
+      .y = head.y + side
+    });
   }
 
-  s->tail = s->head->next->next;
+  add_head(s, head);
 }
 
 void move_snake(Snake *s) {
-  if (!s || !s->head || !s->tail || s->head == s->tail) return;
+  if (!s || !s->head || !s->head->prev) return;
 
   // Use the tail of the snake as the new head
-  point_list *new_head = s->tail;
-  s->tail = new_head->prev;
-  s->tail->next = NULL;
+  s->head = s->head->prev;
 
-  s->head->prev = new_head;
-  new_head->prev = NULL;
-  new_head->next = s->head;
-  s->head = new_head;
-
-  new_head->point = new_head->next->point;
+  s->head->point = s->head->next->point;
   switch (s->direction) {
-    case DIR_UP:    new_head->point.y--; break;
-    case DIR_DOWN:  new_head->point.y++; break;
-    case DIR_LEFT:  new_head->point.x--; break;
-    case DIR_RIGHT: new_head->point.x++; break;
+    case DIR_UP:    s->head->point.y--; break;
+    case DIR_DOWN:  s->head->point.y++; break;
+    case DIR_LEFT:  s->head->point.x--; break;
+    case DIR_RIGHT: s->head->point.x++; break;
   }
 }
 
@@ -125,7 +149,7 @@ void draw_snake(Snake s, int start_x, int start_y) {
   mvprintw(start_y + s.head->point.y, start_x + s.head->point.x, "@");
   // Body
   point_list *list = s.head->next;
-  while (list) {
+  while (list != s.head) {
     mvprintw(start_y + list->point.y, start_x + list->point.x, "#");
     list = list->next;
   }
@@ -137,13 +161,16 @@ char read_key() {
 }
 
 void free_snake(Snake *s) {
-  while (s->head) {
-    point_list *p = s->head;
+  if (!s->head) return;
 
-    s->head = s->head->next;
+  point_list *l = s->head->next;
+  while (l != s->head) {
+    point_list *p = l;
+    l = l->next;
     free(p);
   }
-  s->tail = NULL;
+  free(s->head);
+  s->head = NULL;
 }
 
 void draw_frame(int start_x, int start_y) {
