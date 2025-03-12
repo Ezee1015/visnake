@@ -101,9 +101,9 @@ void move_snake(Snake *s) {
 
   new_head->point = new_head->next->point;
   switch (s->direction) {
-    case DIR_UP: new_head->point.y--; break;
-    case DIR_DOWN: new_head->point.y++; break;
-    case DIR_LEFT: new_head->point.x--; break;
+    case DIR_UP:    new_head->point.y--; break;
+    case DIR_DOWN:  new_head->point.y++; break;
+    case DIR_LEFT:  new_head->point.x--; break;
     case DIR_RIGHT: new_head->point.x++; break;
   }
 }
