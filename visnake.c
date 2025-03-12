@@ -188,11 +188,11 @@ int main() {
         paused = (c != BIND_PAUSE);
       } else {
         switch (c) {
-          case BIND_UP: snake.direction = DIR_UP; break;
-          case BIND_LEFT: snake.direction = DIR_LEFT; break;
-          case BIND_RIGHT: snake.direction = DIR_RIGHT; break;
-          case BIND_DOWN: snake.direction = DIR_DOWN; break;
-          case BIND_PAUSE: paused = true; break;
+          case BIND_UP:     if (snake.direction != DIR_DOWN) snake.direction = DIR_UP; break;
+          case BIND_LEFT:   if (snake.direction != DIR_RIGHT) snake.direction = DIR_LEFT; break;
+          case BIND_RIGHT:  if (snake.direction != DIR_LEFT) snake.direction = DIR_RIGHT; break;
+          case BIND_DOWN:   if (snake.direction != DIR_UP) snake.direction = DIR_DOWN; break;
+          case BIND_PAUSE:  paused = true; break;
           case BIND_RELOAD:
             free_snake(&snake);
             init_game(&snake);
