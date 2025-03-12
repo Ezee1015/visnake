@@ -162,6 +162,30 @@ void draw_frame(int start_x, int start_y) {
   for (int i=0; i<SIZE_X+2; i++) printw("-");
 }
 
+int str_len(char* str) {
+  char *end = str;
+  while (*end) end++;
+  return end - str;
+}
+
+void show_message(char *msg, int scr_width, int scr_height) {
+  size_t msg_len = str_len(msg);
+  point p = {
+    .x = (scr_width-msg_len)/2 - 2,
+    .y = scr_height/2 - 1,
+  };
+
+  // Top
+  move(p.y, p.x);
+  for (int i=0; i<msg_len+4; i++) printw("-");
+
+  mvprintw(p.y+1, p.x, "| %s |", msg);
+
+  // Bottom
+  move(p.y+2, p.x);
+  for (int i=0; i<msg_len+4; i++) printw("-");
+}
+
 int main() {
   srand(time(NULL));
   WINDOW *win = initscr();
@@ -185,6 +209,7 @@ int main() {
       int start_x = (width-SIZE_X)/2, start_y = (height-SIZE_Y)/2;
 
       if (paused) {
+        show_message("PAUSED", width, height);
         paused = (c != BIND_PAUSE);
       } else {
         switch (c) {
@@ -201,10 +226,9 @@ int main() {
 
         move_snake(&snake);
         check_boundaries(&snake);
+        draw_frame(start_x, start_y);
+        draw_snake(snake, start_x, start_y);
       }
-
-      draw_frame(start_x, start_y);
-      draw_snake(snake, start_x, start_y);
     }
   }
 
