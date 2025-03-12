@@ -152,7 +152,7 @@ char read_key() {
 }
 
 void free_snake(Snake *s) {
-  if (!s->head) return;
+  if (!s || !s->head) return;
 
   point_list *l = s->head->next;
   while (l != s->head) {
