@@ -225,17 +225,14 @@ int main() {
       printw("Window is not height enough...");
     } else {
       int start_x = (width-SIZE_X)/2, start_y = (height-SIZE_Y)/2;
+      if (c == BIND_PAUSE) paused = !paused;
 
-      if (paused) {
-        show_message("PAUSED", width, height);
-        paused = (c != BIND_PAUSE);
-      } else {
+      if (!paused) {
         switch (c) {
           case BIND_UP:     if (snake.direction != DIR_DOWN) snake.direction = DIR_UP; break;
           case BIND_LEFT:   if (snake.direction != DIR_RIGHT) snake.direction = DIR_LEFT; break;
           case BIND_RIGHT:  if (snake.direction != DIR_LEFT) snake.direction = DIR_RIGHT; break;
           case BIND_DOWN:   if (snake.direction != DIR_UP) snake.direction = DIR_DOWN; break;
-          case BIND_PAUSE:  paused = true; break;
           case BIND_RELOAD:
             free_snake(&snake);
             init_game(&snake);
@@ -244,9 +241,12 @@ int main() {
 
         move_snake(&snake);
         check_boundaries(&snake);
-        draw_frame(start_x, start_y);
-        draw_snake(snake, start_x, start_y);
       }
+
+      draw_frame(start_x, start_y);
+      draw_snake(snake, start_x, start_y);
+
+      if (paused) show_message("PAUSED", width, height);
     }
   }
 
