@@ -16,6 +16,7 @@
 #define SIZE_Y 25
 
 #define SLEEP_PER_FRAME 100
+#define START_POINTS 5
 
 typedef struct {
   int x;
@@ -70,8 +71,8 @@ void init_game(Snake *s) {
   if (!s) return;
 
   point head = {
-    .x = 3 + rand() % (SIZE_X-6),
-    .y = 3 + rand() % (SIZE_Y-6),
+    .x = START_POINTS + rand() % (SIZE_X - START_POINTS*2),
+    .y = START_POINTS + rand() % (SIZE_Y - START_POINTS*2),
   };
 
   bool horizontal = rand() % 2;
@@ -85,15 +86,11 @@ void init_game(Snake *s) {
       s->direction = DIR_RIGHT;
     }
 
-    add_head(s, (point) {
-      .x = head.x + side * 2,
-      .y = head.y
-    });
-
-    add_head(s, (point) {
-      .x = head.x + side,
-      .y = head.y
-    });
+    for (int i=START_POINTS; i>=0; i--) {
+      point p = head;
+      p.x = p.x + side * i;
+      add_head(s, p);
+    }
   } else {
     if (head.y > SIZE_Y - head.y) {
       side = 1;
@@ -103,18 +100,12 @@ void init_game(Snake *s) {
       s->direction = DIR_DOWN;
     }
 
-    add_head(s, (point) {
-      .x = head.x,
-      .y = head.y + side * 2
-    });
-
-    add_head(s, (point) {
-      .x = head.x,
-      .y = head.y + side
-    });
+    for (int i=START_POINTS; i>=0; i--) {
+      point p = head;
+      p.y = p.y + side * i;
+      add_head(s, p);
+    }
   }
-
-  add_head(s, head);
 }
 
 void move_snake(Snake *s) {
