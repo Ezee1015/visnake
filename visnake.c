@@ -21,102 +21,55 @@
 typedef struct {
   int x;
   int y;
-} point;
-
-struct point_list {
-  point point;
-
-  struct point_list *next;
-  struct point_list *prev;
-};
-typedef struct point_list point_list;
+} Point;
 
 typedef struct {
-  bool map[SIZE_X][SIZE_Y];
-  point_list *head; // cyclical list
+  Point body[SIZE_X*SIZE_Y];
+  size_t head_pos;
+  size_t length;
+
+  Point food;
+
   enum { DIR_UP, DIR_DOWN, DIR_LEFT, DIR_RIGHT } direction;
-  point food;
   bool dead;
 } Snake;
 
-void add_head(Snake *s, point p) {
-  if (!s) return;
-
-  point_list *new = malloc(sizeof(point_list));
-  if (!new) return;
-  new->point = p;
-  s->map[p.x][p.y] = true;
-
-  if (!s->head) {
-    s->head = new;
-    new->next = NULL;
-    new->prev = NULL;
-    return;
-  }
-
-  if (!s->head->prev) {
-    new->next = s->head;
-    new->prev = s->head;
-    s->head->prev = new;
-    s->head->next = new;
-    s->head = new;
-    return;
-  }
-
-  new->next = s->head;
-  new->prev = s->head->prev;
-
-  s->head->prev->next = new;
-  s->head->prev = new;
-  s->head = new;
-}
-
-void free_snake(Snake *s) {
-  if (!s || !s->head) return;
-
-  point_list *l = s->head->next;
-  while (l != s->head) {
-    point_list *p = l;
-    l = l->next;
-    free(p);
-  }
-  free(s->head);
-  s->head = NULL;
-}
+#define POINT_CMP(p1, p2) ( (p1.x == p2.x) && (p1.y == p2.y) )
 
 void generate_food(Snake *s) {
-  if (!s->head) return;
+  if (!s) return;
 
   bool empty_spot = false;
-  point spot;
+  Point spot;
   while (!empty_spot) {
-    spot = (point) {
+    spot = (Point) {
       .x = rand() % SIZE_X,
       .y = rand() % SIZE_Y
     };
 
-    empty_spot = !s->map[spot.x][spot.y];
+    int i=0;
+    while (!empty_spot && i<s->length) {
+      empty_spot = !POINT_CMP(spot, s->body[s->head_pos-i]);
+      i++;
+    }
   }
   s->food = spot;
 }
 
 void init_game(Snake *s) {
   if (!s) return;
-  if (s->head) free_snake(s);
 
-  for (int x=0; x<SIZE_X; x++)
-    for (int y=0; y<SIZE_Y; y++)
-      s->map[x][y] = false;
-
+  s->head_pos = START_POINTS-1;
+  s->length = START_POINTS;
   s->dead = false;
 
-  point head = {
+  Point head = {
     .x = START_POINTS + rand() % (SIZE_X - START_POINTS*2),
     .y = START_POINTS + rand() % (SIZE_Y - START_POINTS*2),
   };
 
-  bool horizontal = rand() % 2;
   int side;
+  bool horizontal = rand() % 2;
   if (horizontal) {
     if (head.x > SIZE_X - head.x) {
       side = 1;
@@ -126,10 +79,10 @@ void init_game(Snake *s) {
       s->direction = DIR_RIGHT;
     }
 
-    for (int i=START_POINTS; i>=0; i--) {
-      point p = head;
+    for (int i=0; i<START_POINTS; i++) {
+      Point p = head;
       p.x = p.x + side * i;
-      add_head(s, p);
+      s->body[START_POINTS-1-i] = p;
     }
   } else {
     if (head.y > SIZE_Y - head.y) {
@@ -140,10 +93,10 @@ void init_game(Snake *s) {
       s->direction = DIR_DOWN;
     }
 
-    for (int i=START_POINTS; i>=0; i--) {
-      point p = head;
+    for (int i=0; i<START_POINTS; i++) {
+      Point p = head;
       p.y = p.y + side * i;
-      add_head(s, p);
+      s->body[START_POINTS-1-i] = p;
     }
   }
 
@@ -151,9 +104,9 @@ void init_game(Snake *s) {
 }
 
 void move_snake(Snake *s) {
-  if (!s || !s->head || !s->head->prev) return;
+  if (!s) return;
 
-  point new_pos = s->head->point;
+  Point new_pos = s->body[s->head_pos];
   switch (s->direction) {
     case DIR_UP:    new_pos.y--; break;
     case DIR_DOWN:  new_pos.y++; break;
@@ -167,36 +120,27 @@ void move_snake(Snake *s) {
   if (new_pos.x >= SIZE_X) new_pos.x = 0;
   if (new_pos.y >= SIZE_Y) new_pos.y = 0;
 
-  if (s->map[new_pos.x][new_pos.y]) {
-    s->dead = true;
-    return;
+  int i=0;
+  while (!s->dead && i<s->length) {
+    if (POINT_CMP(new_pos, s->body[s->head_pos-i])) s->dead = true;
+    i++;
   }
 
-  if (s->head->point.x == s->food.x && s->head->point.y == s->food.y) {
-    add_head(s, s->food);
+  if (POINT_CMP(new_pos, s->food)) {
+    s->length++;
     generate_food(s);
-  } else {
-    // Use the tail of the snake as the new head
-    point tail = s->head->prev->point;
-    s->map[tail.x][tail.y] = false;
-    s->map[new_pos.x][new_pos.y] = true;
-    s->head = s->head->prev;
   }
 
-  s->head->point = new_pos;
+  s->body[++s->head_pos] = new_pos;
 }
 
 void draw_snake(Snake s, int start_x, int start_y) {
-  if (!s.head) return;
-
   // Body
-  point_list *list = s.head->next;
-  while (list != s.head) {
-    mvprintw(start_y + list->point.y, start_x + list->point.x, "#");
-    list = list->next;
-  }
+  for (int i=s.length-1; i>0; i--)
+    mvprintw(start_y + s.body[s.head_pos-i].y, start_x + s.body[s.head_pos-i].x, "#");
+
   // Head
-  mvprintw(start_y + s.head->point.y, start_x + s.head->point.x, "@");
+  mvprintw(start_y + s.body[s.head_pos].y, start_x + s.body[s.head_pos].x, "@");
 }
 
 char read_key() {
@@ -228,7 +172,7 @@ int str_len(char* str) {
 
 void show_message(char *msg, int scr_width, int scr_height) {
   size_t msg_len = str_len(msg);
-  point p = {
+  Point p = {
     .x = (scr_width-msg_len)/2 - 2,
     .y = scr_height/2 - 1,
   };
@@ -267,7 +211,7 @@ int main() {
       int start_x = (width-SIZE_X)/2, start_y = (height-SIZE_Y)/2;
 
       switch (c) {
-        case BIND_PAUSE: paused = !paused; break;
+        case BIND_PAUSE:  if (!snake.dead) paused = !paused; break;
         case BIND_RELOAD: init_game(&snake); break;
       }
 
@@ -282,16 +226,15 @@ int main() {
         move_snake(&snake);
       }
 
+      draw_snake(snake, start_x, start_y);
       draw_frame(start_x, start_y);
       mvprintw(start_y + snake.food.y, start_x + snake.food.x, "*");
-      draw_snake(snake, start_x, start_y);
 
       if (paused) show_message("PAUSED", width, height);
       if (snake.dead) show_message("Game over", width, height);
     }
   }
 
-  free_snake(&snake);
   if (endwin() == ERR) return 1;
   return 0;
 }
