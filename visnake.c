@@ -16,7 +16,7 @@
 #define SIZE_Y 25
 
 #define SLEEP_PER_FRAME 100
-#define START_POINTS 5
+#define START_POINTS 5 // Maximum value = minimum{SIZE_X, SIZE_Y}/2 - 1
 
 typedef struct {
   int x;
@@ -49,7 +49,9 @@ void generate_food(Snake *s) {
 
     int i=0;
     while (!empty_spot && i<s->length) {
-      empty_spot = !POINT_CMP(spot, s->body[s->head_pos-i]);
+      int pos = s->head_pos-i;
+      if (pos < 0) pos += SIZE_X*SIZE_Y;
+      empty_spot = !POINT_CMP(spot, s->body[pos]);
       i++;
     }
   }
@@ -120,24 +122,41 @@ void move_snake(Snake *s) {
   if (new_pos.x >= SIZE_X) new_pos.x = 0;
   if (new_pos.y >= SIZE_Y) new_pos.y = 0;
 
-  int i=0;
-  while (!s->dead && i<s->length) {
-    if (POINT_CMP(new_pos, s->body[s->head_pos-i])) s->dead = true;
-    i++;
-  }
-
-  if (POINT_CMP(new_pos, s->food)) {
-    s->length++;
+  bool food = POINT_CMP(new_pos, s->food);
+  if (food) {
+    if (++s->length == SIZE_X*SIZE_Y) {
+      s->won = true;
+      return;
+    }
     generate_food(s);
   }
 
+  // If the snake eats the food, as we are adding one element to the snake, we
+  // should check if that piece collides with the other elements of the body.
+  //
+  // If it doesn't eat the food, we are "deleting" the last piece of the snake
+  // in order to put the new head. We should check if that new piece collides
+  // with the other elements of the body, except the last one that gets "deleted"
+  const int length_to_check = (food) ? s->length : s->length-1;
+  int i=0;
+  while (!s->dead && i<length_to_check) {
+    int pos = s->head_pos-i;
+    if (pos < 0) pos += SIZE_X*SIZE_Y;
+    if (POINT_CMP(new_pos, s->body[pos])) s->dead = true;
+    i++;
+  }
+
   s->body[++s->head_pos] = new_pos;
+  if (s->head_pos >= SIZE_X*SIZE_Y) s->head_pos = 0;
 }
 
 void draw_snake(Snake s, int start_x, int start_y) {
   // Body
-  for (int i=s.length-1; i>0; i--)
-    mvprintw(start_y + s.body[s.head_pos-i].y, start_x + s.body[s.head_pos-i].x, "#");
+  for (int i=s.length-1; i>0; i--) {
+    int pos = s.head_pos-i;
+    if (pos < 0) pos += SIZE_X*SIZE_Y;
+    mvprintw(start_y + s.body[pos].y, start_x + s.body[pos].x, "#");
+  }
 
   // Head
   mvprintw(start_y + s.body[s.head_pos].y, start_x + s.body[s.head_pos].x, "@");
