@@ -12,10 +12,10 @@
 #define BIND_PAUSE 27 // Escape
 #define BIND_RELOAD 'r'
 
-#define SIZE_X 25
+#define SIZE_X 50
 #define SIZE_Y 25
 
-#define SLEEP_PER_FRAME 100
+#define SLEEP_PER_FRAME 90
 #define START_POINTS 5 // Maximum value = minimum{SIZE_X, SIZE_Y}/2 - 1
 
 typedef struct {
