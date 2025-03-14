@@ -161,7 +161,14 @@ void draw_snake(Snake s, int start_x, int start_y) {
   }
 
   // Head
-  mvprintw(start_y + s.body[s.head_pos].y, start_x + s.body[s.head_pos].x, "@");
+  char h;
+  switch (s.direction) {
+    case DIR_UP:    h = '^'; break;
+    case DIR_LEFT:  h = '<'; break;
+    case DIR_RIGHT: h = '>'; break;
+    case DIR_DOWN:  h = 'v'; break;
+  }
+  mvprintw(start_y + s.body[s.head_pos].y, start_x + s.body[s.head_pos].x, "%c", h);
 }
 
 char read_key() {
