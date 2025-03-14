@@ -32,6 +32,7 @@ typedef struct {
 
   enum { DIR_UP, DIR_DOWN, DIR_LEFT, DIR_RIGHT } direction;
   bool dead;
+  bool won;
 } Snake;
 
 #define POINT_CMP(p1, p2) ( (p1.x == p2.x) && (p1.y == p2.y) )
@@ -64,6 +65,7 @@ void init_game(Snake *s) {
   s->head_pos = START_POINTS-1;
   s->length = START_POINTS;
   s->dead = false;
+  s->won = false;
 
   Point head = {
     .x = START_POINTS + rand() % (SIZE_X - START_POINTS*2),
@@ -189,7 +191,7 @@ int str_len(char* str) {
   return end - str;
 }
 
-void show_message(char *msg, int scr_width, int scr_height) {
+void draw_message(char *msg, int scr_width, int scr_height) {
   size_t msg_len = str_len(msg);
   Point p = {
     .x = (scr_width-msg_len)/2 - 2,
@@ -205,6 +207,20 @@ void show_message(char *msg, int scr_width, int scr_height) {
   // Bottom
   move(p.y+2, p.x);
   for (int i=0; i<msg_len+4; i++) printw("-");
+}
+
+void draw_points(Snake s, int start_x, int start_y) {
+  char *msg = "Points : ";
+  const int msg_len = str_len(msg);
+
+  int points_len = 0;
+  int p = s.length;
+  while (p > 0) {
+    p /= 10;
+    points_len++;
+  }
+
+  mvprintw(start_y-1, start_x + (SIZE_X - msg_len - points_len - 4)/2, "| %s%ld |", msg, s.length);
 }
 
 int main() {
@@ -230,11 +246,11 @@ int main() {
       int start_x = (width-SIZE_X)/2, start_y = (height-SIZE_Y)/2;
 
       switch (c) {
-        case BIND_PAUSE:  if (!snake.dead) paused = !paused; break;
+        case BIND_PAUSE:  if (!snake.dead && !snake.won) paused = !paused; break;
         case BIND_RELOAD: init_game(&snake); break;
       }
 
-      if (!paused && !snake.dead) {
+      if (!paused && !snake.dead && !snake.won) {
         switch (c) {
           case BIND_UP:     if (snake.direction != DIR_DOWN) snake.direction = DIR_UP; break;
           case BIND_LEFT:   if (snake.direction != DIR_RIGHT) snake.direction = DIR_LEFT; break;
@@ -245,12 +261,14 @@ int main() {
         move_snake(&snake);
       }
 
+      mvprintw(start_y + snake.food.y, start_x + snake.food.x, "*");
       draw_snake(snake, start_x, start_y);
       draw_frame(start_x, start_y);
-      mvprintw(start_y + snake.food.y, start_x + snake.food.x, "*");
+      draw_points(snake, start_x, start_y);
 
-      if (paused) show_message("PAUSED", width, height);
-      if (snake.dead) show_message("Game over", width, height);
+      if (paused) draw_message("PAUSED", width, height);
+      if (snake.dead) draw_message("Game over", width, height);
+      if (snake.won) draw_message("You won!", width, height);
     }
   }
 
