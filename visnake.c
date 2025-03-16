@@ -148,8 +148,8 @@ void move_snake(Snake *s) {
     i++;
   }
 
-  s->body[++s->head_pos] = new_pos;
-  if (s->head_pos >= SIZE_X*SIZE_Y) s->head_pos = 0;
+  if (++s->head_pos >= SIZE_X*SIZE_Y) s->head_pos = 0;
+  s->body[s->head_pos] = new_pos;
 }
 
 void draw_snake(Snake s, int start_x, int start_y) {
