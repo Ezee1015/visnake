@@ -86,7 +86,7 @@ void init_game(Snake *s) {
     for (int i=0; i<START_POINTS; i++) {
       Point p = head;
       p.x = p.x + side * i;
-      s->body[START_POINTS-1-i] = p;
+      s->body[s->head_pos-i] = p;
     }
   } else {
     if (head.y > SIZE_Y - head.y) {
@@ -100,7 +100,7 @@ void init_game(Snake *s) {
     for (int i=0; i<START_POINTS; i++) {
       Point p = head;
       p.y = p.y + side * i;
-      s->body[START_POINTS-1-i] = p;
+      s->body[s->head_pos-i] = p;
     }
   }
 
