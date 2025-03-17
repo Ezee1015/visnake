@@ -35,26 +35,25 @@ typedef struct {
   bool won;
 } Snake;
 
-#define POINT_CMP(p1, p2) ( (p1.x == p2.x) && (p1.y == p2.y) )
+#define POINT_CMP(p1, p2) ( ((p1).x == (p2).x) && ((p1).y == (p2).y) )
 
 void generate_food(Snake *s) {
   if (!s) return;
 
-  bool empty_spot = false;
+  bool occupied_spot = true;
   Point spot;
-  while (!empty_spot) {
+  while (occupied_spot) {
     spot = (Point) {
       .x = rand() % SIZE_X,
       .y = rand() % SIZE_Y
     };
 
     int i=0;
-    while (!empty_spot && i<s->length) {
+    do {
       int pos = s->head_pos-i;
       if (pos < 0) pos += SIZE_X*SIZE_Y;
-      empty_spot = !POINT_CMP(spot, s->body[pos]);
-      i++;
-    }
+      occupied_spot = POINT_CMP(spot, s->body[pos]);
+    } while (!occupied_spot && ++i < s->length);
   }
   s->food = spot;
 }
