@@ -107,7 +107,18 @@ void init_game(Snake *s) {
   generate_food(s);
 }
 
-void move_snake(Snake *s) {
+void draw_snake_head(Snake s, int start_x, int start_y) {
+  char h;
+  switch (s.direction) {
+    case DIR_UP:    h = '^'; break;
+    case DIR_LEFT:  h = '<'; break;
+    case DIR_RIGHT: h = '>'; break;
+    case DIR_DOWN:  h = 'v'; break;
+  }
+  mvprintw(start_y + s.body[s.head_pos].y, start_x + s.body[s.head_pos].x, "%c", h);
+}
+
+void move_snake(Snake *s, int start_x, int start_y) {
   if (!s) return;
 
   Point new_pos = s->body[s->head_pos];
@@ -131,6 +142,11 @@ void move_snake(Snake *s) {
       return;
     }
     generate_food(s);
+    mvprintw(start_y + s->food.y, start_x + s->food.x, "*");
+  } else {
+    int tail_pos = s->head_pos - s->length + 1;
+    if (tail_pos < 0) tail_pos += SIZE_X*SIZE_Y;
+    mvprintw(start_y + s->body[tail_pos].y, start_x + s->body[tail_pos].x, " ");
   }
 
   // If the snake eats the food, as we are adding one element to the snake, we
@@ -148,8 +164,10 @@ void move_snake(Snake *s) {
     i++;
   }
 
+  mvprintw(start_y + s->body[s->head_pos].y, start_x + s->body[s->head_pos].x, "#");
   if (++s->head_pos >= SIZE_X*SIZE_Y) s->head_pos = 0;
   s->body[s->head_pos] = new_pos;
+  draw_snake_head(*s, start_x, start_y);
 }
 
 void draw_snake(Snake s, int start_x, int start_y) {
@@ -160,15 +178,7 @@ void draw_snake(Snake s, int start_x, int start_y) {
     mvprintw(start_y + s.body[pos].y, start_x + s.body[pos].x, "#");
   }
 
-  // Head
-  char h;
-  switch (s.direction) {
-    case DIR_UP:    h = '^'; break;
-    case DIR_LEFT:  h = '<'; break;
-    case DIR_RIGHT: h = '>'; break;
-    case DIR_DOWN:  h = 'v'; break;
-  }
-  mvprintw(start_y + s.body[s.head_pos].y, start_x + s.body[s.head_pos].x, "%c", h);
+  draw_snake_head(s, start_x, start_y);
 }
 
 char read_key() {
@@ -230,6 +240,14 @@ void draw_points(Snake s, int start_x, int start_y) {
   mvprintw(start_y-1, start_x + (SIZE_X - msg_len - points_len - 4)/2, "| %s%ld |", msg, s.length);
 }
 
+void refresh_game(Snake s, int start_x, int start_y) {
+  erase();
+  mvprintw(start_y + s.food.y, start_x + s.food.x, "*");
+  draw_snake(s, start_x, start_y);
+  draw_frame(start_x, start_y);
+  draw_points(s, start_x, start_y);
+}
+
 int main() {
   srand(time(NULL));
   WINDOW *win = initscr();
@@ -241,20 +259,39 @@ int main() {
 
   bool paused = false;
   char c = 0;
+  int old_width = 0, old_height = 0;
+  int start_x = 0, start_y = 0;
+
   while ( (c = read_key()) != BIND_EXIT ) {
-    clear();
     int width = getmaxx(win), height = getmaxy(win);
 
     if (width < SIZE_X+2) {
+      erase();
       printw("Window is not width enough...");
     } else if (height < SIZE_Y+2) {
+      erase();
       printw("Window is not height enough...");
     } else {
-      int start_x = (width-SIZE_X)/2, start_y = (height-SIZE_Y)/2;
+      if (old_width != width || old_height != height) {
+        old_width = width;
+        old_height = height;
+        start_x = (width-SIZE_X)/2;
+        start_y = (height-SIZE_Y)/2;
+        refresh_game(snake, start_x, start_y);
+      }
 
       switch (c) {
-        case BIND_PAUSE:  if (!snake.dead && !snake.won) paused = !paused; break;
-        case BIND_RELOAD: init_game(&snake); break;
+        case BIND_PAUSE:
+          if (!snake.dead && !snake.won) {
+            paused = !paused;
+            refresh_game(snake, start_x, start_y);
+          }
+          break;
+
+        case BIND_RELOAD:
+          init_game(&snake);
+          refresh_game(snake, start_x, start_y);
+          break;
       }
 
       if (!paused && !snake.dead && !snake.won) {
@@ -265,13 +302,10 @@ int main() {
           case BIND_DOWN:   if (snake.direction != DIR_UP) snake.direction = DIR_DOWN; break;
         }
 
-        move_snake(&snake);
+        move_snake(&snake, start_x, start_y);
+        draw_points(snake, start_x, start_y);
       }
 
-      mvprintw(start_y + snake.food.y, start_x + snake.food.x, "*");
-      draw_snake(snake, start_x, start_y);
-      draw_frame(start_x, start_y);
-      draw_points(snake, start_x, start_y);
 
       if (paused) draw_message("PAUSED", width, height);
       if (snake.dead) draw_message("Game over", width, height);
